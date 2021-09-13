@@ -1,0 +1,116 @@
+﻿//Câu 1: Tính số tiền discount của từng hóa đơn
+With member [Measures].[MM_Discount] as
+		[Measures].[Sales]*[Measures].[Discount]	
+Select {[Measures].[MM_Discount]}
+on Columns,
+[FACT].[Order ID].children on Rows
+From [DO AN OLAP];
+//Câu 2: Truy vấn những khách hàng có doanh thu trên 2tr
+SELECT [Measures].[Sales] ON 0,
+FILTER(
+[CUSTOMER DIM].[Customer ID].members
+, [Measures].[Sales]>2000) ON 1
+From [DO AN OLAP];
+//Câu 3: Truy vấn drilldown thành phố có doanh thu cao nhất ở tỉnh Texas
+
+SELECT [Measures].[Sales] on columns,
+ORDER(
+	DrilldownMember(
+		{[CUSTOMER DIM].[Hierarchy].[Region].&[Central].&[Texas]},     
+		{[CUSTOMER DIM].[Hierarchy].[Region].&[Central].&[Texas]}),
+		[Measures].[Profit], BDESC) ON rows     
+		FROM [DO AN OLAP] ;
+// Câu 4: Trong bộ dữ liệu gồm các sub-category:Dell,Lenovo, HP.Truy vấn drill down category Lenovo và sắp xếp tất cả theo thứ tự tăng dần lợi nhuận mang lợi trong năm 2017.
+SELECT [Measures].[Profit] on columns,
+Order(
+	DrilldownMember(
+		{[PRODUCT DIM].[Hierarchy].[Category].&[Laptops].&[Dell],        
+		[PRODUCT DIM].[Hierarchy].[Category].&[Laptops].&[Lenovo],
+		[PRODUCT DIM].[Hierarchy].[Category].&[Laptops].&[HP]},     
+		[PRODUCT DIM].[Hierarchy].[Category].&[Laptops].&[HP]),
+		[Measures].[Profit], ASC)*[TIME DIM].[YEAR].&[2017] ON rows     
+		FROM [DO AN OLAP] ;
+// Câu 5: Thống kê doanh thu của những khách hàng vừa mua iphone >7 vừa mua mi>7 trong năm 2019.Chưa 
+select [Measures].[Sales] on Columns ,
+intersect(
+	filter([CUSTOMER DIM].[Customer Name].children,
+			([Measures].[Quantity],[PRODUCT DIM].[Sub Category].&[iPhone])>7 and [TIME DIM].[YEAR].&[2019]),
+	filter([CUSTOMER DIM].[Customer Name].children,
+			([Measures].[Quantity],[PRODUCT DIM].[Sub Category].&[Mi])>7 and [TIME DIM].[YEAR].&[2019]))
+			on rows
+			from [DO AN OLAP];
+//Câu 6: Tính tổng hóa đơn của các thành phố (không tính top 5 thành phố có daonh thu cao nhất) 
+With Set
+[Top5] AS
+(TOPCOUNT({ORDER( ({[CUSTOMER DIM].[Hierarchy].[City].members})
+ ,([Measures].[Sales]),BDESC)},5))
+    
+MEMBER [City].[OtherAll] AS 
+SUM((EXCEPT([CUSTOMER DIM].[Hierarchy].[City], [Top5]))
+)
+
+Select 
+[Measures].[Order ID] on Columns, 
+{[City].[OtherAll]} on Rows
+From
+[DO AN OLAP];
+//Câu 7: Truy vấn top 3 sub-category được discount nhiều nhất năm 2018.
+select [Measures].[Discount] on columns,
+topcount (Order(
+
+[PRODUCT DIM].[Sub Category].children
+
+,[Measures].[Discount]
+
+,BDESC
+
+),6)*[TIME DIM].[YEAR].&[2018] on rows
+From [DO AN OLAP];
+
+//Câu 9: Trong tháng 1,2,3 quý 1 của mỗi năm , truy vấn 5 thành phố ở mỗi tiểu bang đem lại tổng hóa đơn cao nhất
+SELECT [Measures].[Order ID] ON COLUMNS, 
+GENERATE(
+	GENERATE (
+		[TIME DIM].[Hierarchy].[YEAR].MEMBERS, {[TIME DIM].[Hierarchy].CURRENTMEMBER.FIRSTCHILD}),
+	TOPCOUNT ( 
+		{[TIME DIM].[Hierarchy].CURRENTMEMBER.CHILDREN} * [CUSTOMER DIM].[Hierarchy].[City].MEMBERS,5,[Measures].[Order ID])) ON ROWS
+FROM [DO AN OLAP];
+
+
+//Câu 10: Tìm giá gốc của sản phẩm, giá bán của sản phẩm. Rồi tính độ chênh lệch đó.
+With member [Measures].[Price_Original] as
+		([Measures].[Sales] - [Measures].[Profit])/[Measures].[Quantity]
+member [Measures].[Price_Sale] as
+		([Measures].[Sales] + [Measures].[Profit])/[Measures].[Quantity]
+member [Measures].[Difference] as
+		[Measures].[Price_Sale] - [Measures].[Price_Original]	
+Select {[Measures].[Price_Original],[Measures].[Price_Sale],[Measures].[Difference]}
+on Columns,
+[PRODUCT DIM].[Product Name].children on Rows
+From [DO AN OLAP];
+//Câu 8: Truy vấn những khách hàng có chữ cái đầu là “A" sắp xếp tăng dần theo PROFIT (Select, From, Filter, Order) (Done) 
+SELECT [Measures].[Profit] ON 0,
+FILTER(
+	ORDER(
+	[CUSTOMER DIM].[Customer Name].MEMBERS,
+	[Measures].[Profit],DESC),
+	LEFT([CUSTOMER DIM].[Customer Name].CURRENTMEMBER.NAME,1)="C") ON 1
+From [DO AN OLAP];
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
